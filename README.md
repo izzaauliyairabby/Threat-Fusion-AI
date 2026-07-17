@@ -3,9 +3,157 @@
 
 An AI-Powered Threat Intelligence system is a next-generation cybersecurity framework that leverages Machine Learning (ML) and Artificial Intelligence (AI) to automate the collection, analysis, and prediction of cyber threats in real-time. This system transforms massive amounts of raw, unstructured data into actionable insights to stop cyberattacks before they penetrate the network.
 
-1. Executive SummaryThis capstone project presents ThreatFusion AI, an advanced, production-ready AI-powered threat intelligence platform designed to automate the lifecycle of cyber threat data collection, enrichment, and analysis. Addressing the core problem of alert fatigue and unstructured threat data overload in modern Security Operations Centers (SOCs), this project implements an automated pipeline that extracts actionable intelligence from disparate sources.The primary intelligence requirement was to identify, classify, and track advanced persistent threat (APT) campaigns targeting critical infrastructure. The highest-priority findings during evaluation revealed an active, multi-stage campaign leveraging newly uncovered zero-day vulnerabilities mapped to systemic living-off-the-land techniques. Operatially, ThreatFusion AI delivers immediate value by reducing the time-to-intelligence (TTI) from hours to milliseconds, enabling automated, proactive defensive posture adjustment and reducing false-positive rates by 42%.2. Intelligence RequirementsTo guide the collection and analytical focus of ThreatFusion AI, the following framework was established:Priority Intelligence Requirements (PIRs)PIR-1: What specific threat actors or nation-state groups are actively targeting financial and energy sector supply chains within the APAC region?PIR-2: What are the current Indicators of Compromise (IoCs) and Tactics, Techniques, and Procedures (TTPs) associated with recent ransomware-as-a-service (RaaS) exfiltration methods?PIR-3: Which internal assets or infrastructure vulnerabilities are most susceptible to the newly identified active campaigns?Supported DecisionsTriggering automated firewall and EDR blocklists based on high-confidence predictive threat scores.Patch prioritization scheduling for infrastructure teams based on weaponized exploit intelligence.Strategic reallocation of security budgets toward specific vector defense mechanisms (e.g., identity security vs. network segmentation).Target Sectors and Scope BoundariesTarget Sectors: Financial Institutions, Critical Infrastructure (Energy/Grid), and Managed Service Providers (MSPs).Scope Boundaries: Focuses exclusively on external threat feeds, open-source intelligence (OSINT), and dark web telemetry from the past 180 days. Internal honeypot logs are included; however, active offensive scanning or counter-reconnaissance is strictly out of scope.3. Data Sources and HandlingThreatFusion AI ingests data from a variety of sources, strictly managed under the Traffic Light Protocol (TLP) to ensure operational security and data integrity.Data Source MatrixSource NameSource TypeReliabilityCredibilityCollection MethodTLPAlienVault OTXCommercial OSINTReliable (B)Competent (2)REST APITLP:CLEARMISP Community FeedShared IntelUsually Reliable (C)Possibly True (3)Automated SyncTLP:GREENDarkWeb ScrapingProprietary OnionUnreliable (E)Doubtful (5)Python/Tor ScraperTLP:AMBERInternal HoneypotsInternal SensorHighly Reliable (A)Confirmed (1)Log ForwarderTLP:REDSafety and Data Sanitization ControlsTo prevent accidental detonation or cross-contamination:All ingested URLs, domains, and IP addresses are automatically defanged (e.g., hxxp[://]malicious[.]com).File hashes (MD5/SHA256) are validated via regex before database insertion to prevent SQL/NoSQL injection via malicious threat names.Malicious attachments or samples discovered via OSINT are never downloaded locally; only metadata and structural behaviors are stored.4. System ArchitectureThe ThreatFusion AI platform is built as a modular, containerized Linux-based pipeline designed for low-latency processing and high throughput.
-   # [Ingestion Module] ──> [Extraction & NLP] ──> [AI Scoring Engine] ──> [Graph Engine] ──> [Export/Sharing]
-   
- (API / Scrapers)       (Regex / Spacy LLM)     (XGBoost Model)       (Neo4j Database)   (STIX / OpenCTI)
- 
-Ingestion Module: A Python-based microservice utilizing Apache Kafka to ingest real-time JSON and XML streams from external threat feeds and internal Syslog servers.Extraction & NLP Module: Uses regular expressions for standard IoC parsing and a fine-tuned Named Entity Recognition (NER) model to pull threat actors and malware names from unstructured markdown text.AI Scoring & Classification Module: Evaluates incoming threat data using machine learning algorithms to calculate a dynamic Threat Confidence Score (0-100).Graph Engine Module: Maps entities into a graph database to establish clear relationships between infrastructure and known malicious actors.Export and Reporting Module: Automatically packages high-fidelity threat data into normalized STIX 2.1 bundles and generates PDF/Markdown summaries for human analysts.5. AI Model DesignThe core analytical engine uses a hybrid machine learning approach to classify threats and predict maliciousness.Feature Engineering & LabelsFeatures: Domain age, registrar country, SSL certificate validity, structural text embeddings from threat reports, frequency of IP occurrence across multiple feeds, and historical association with known malicious ASNs.Labels: Binary classification (0: Benign / False Positive, 1: Malicious).Model Selection & Training ProcessPrimary Model: An XGBoost Classifier was selected for numerical/categorical IoC scoring due to its training speed and interpretability via SHAP values. For unstructured text processing, a custom DistilBERT-NER model was utilized.Training Dataset: Trained on 500,000 historical threat indicators sourced from CleanMX, PhishTank, and sanitized enterprise SOC historical logs. Split ratios were 80% training, 10% validation, and 10% testing.Alternatives ConsideredRandom Forest: Discounted due to larger memory footprint and slower inference times during peak streaming loads.Full GPT-4 API Integration: Discounted due to high operational costs, latency constraints, and potential data privacy violations regarding TLP:RED data leaks to public LLM endpoints.6. Evaluation ResultsThe system was rigorously evaluated on a standalone test dataset containing known threat vectors and verified benign network traffic.Performance MetricsAccuracy: 96.4%Precision: 94.2% (Minimizes false blocks on legitimate business applications)Recall (Sensitivity): 97.8% (Ensures critical threats are not missed)F1-Score: 95.9%Error Analysis & LimitationsAn analysis of misclassifications revealed that false positives primarily occurred on newly registered Cloudflare/CDN domains used by legitimate startups. False negatives occurred when threat actors used highly customized, low-frequency living-off-the-land (LotL) binaries that mimics administrative PowerShell commands.System Improvement PlanFuture iterations will incorporate temporal graph neural networks (GNNs) to analyze how an infrastructure's behavior changes over time, improving detection rates for dormant malicious domains.7. ATT&CK MappingThreatFusion AI aligns all parsed tactics and behaviors directly to the MITRE ATT&CK Enterprise Framework.Detected Indicator / BehaviorMapped TechniqueTechnique IDEvidence / Observed LogConfidence ScoreEnforced LSASS memory dumpOS Credential DumpingT1003.001procdump.exe -ma lsass.exe found in incident report text.High (95%)Base64 encoded web requestsObfuscated Files or InfoT1027Encoded payload observed in network traffic logs.Medium (78%)Automated task modificationScheduled Task/JobT1053.005Registry modification event HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache.High (91%)8. Knowledge Graph and Campaign AnalysisUsing a Neo4j Graph Database, ThreatFusion AI visualizes the structural links between isolated indicators to identify broader malicious infrastructure clusters.Graph Schema & RelationshipsThe graph model connects nodes using explicit cybersecurity semantic relationships:(Threat Actor) -[USES]-> (Malware) -[COMMUNICATES_WITH]-> (C2 IP) -[RESOLVES_TO]-> (Domain)Operational Insights & Cluster AnalysisDuring the validation phase, the graph engine successfully clustered 14 seemingly unrelated phishing domains back to a single malicious Autonomous System Number (ASN) and an identical Bitcoin wallet address hidden in the metadata of the dark web extortion notes. This connection allowed analysts to identify a coordinated campaign by APT29 (Cozy Bear) targeting local government cloud infrastructure, transitioning the defense strategy from individual IP blocking to a holistic domain-group isolation.9. STIX/MISP/OpenCTI Sharing PlanTo ensure interoperability within the global cybersecurity ecosystem, ThreatFusion AI implements standard sharing protocols:STIX 2.1 Generation: The system automatically converts validated threats into structured STIX JSON objects (e.g., indicator, threat-actor, relationship, sighting).MISP Integration: A built-in PyMISP script pushes newly identified indicators directly to internal and industry-specific ISAC (Information Sharing and Analysis Center) MISP instances via API tokens.OpenCTI Ingestion: ThreatFusion AI operates as an automated data connector for OpenCTI, providing structured graph visualization and long-term analytical tracking for threat hunters.10. Analyst ReportsExecutive Summary (For C-Suite)Subject: Emerging Advanced Persistent Threat Campaign Targeting Supply Chain PartnersRecent intelligence generated by ThreatFusion AI indicates a 35% surge in spear-phishing campaigns targeting regional logistics providers. The threat actors aim to steal corporate credentials to compromise downstream enterprise environments. Executive recommendation is to fast-track mandatory phishing training and enforce strict multi-factor authentication (MFA) parameters on all external-facing supply chain portals.Technical Analysis (For SOC & Threat Hunters)Malware Family: ShadowGate Loader v2.4Delivery Mechanism: Malicious PDF masquerading as an invoice (Invoice_2026_99.pdf), utilizing an embedded JavaScript script to trigger an external macro download.Network Indicators: C2 traffic beacons to 198.51.100[.]42 every 450 seconds using custom HTTP POST headers to mask data exfiltration.Host Indicators: Creates a persistence key at HKCU\Software\Microsoft\Windows\CurrentVersion\Run\SysUpdate.11. Defensive RecommendationsBased on the intelligence gathered during this capstone project, defensive operations should implement the following actions prioritized by risk level:Immediate / Short-Term Actions (SOC & Incident Response)Deploy the generated STIX/MISP blocklist containing the 14 identified phishing domains to all corporate web proxies and firewalls.Isolate internal hosts displaying persistent network beacons to the 198.51.100.0/24 subnet.Conduct an urgent credential sweep for any corporate users who accessed external cloud portals over the past 48 hours.Medium-Term Actions (Detection Engineering & Patching)Develop specific Sigma and YARA rules to detect the unique execution strings of the ShadowGate Loader binary.Implement strict endpoint containment policies to restrict cmd.exe or PowerShell.exe execution when spawned directly by web browsers or PDF readers.Long-Term Strategic Actions (Management & Governance)Establish a formal automated intelligence-sharing agreement with regional peer organizations via an ISAC framework.Migrate legacy, perimeter-heavy security architectures toward a comprehensive Zero Trust Network Access (ZTNA) model.12. Limitations and Future WorkWhile ThreatFusion AI achieved its primary milestones, several design limitations remain:Data Quality Dependencies: The system's predictive accuracy drops significantly if external feeds experience downtime or provide stale, non-vetted indicators.Adversarial Machine Learning Risk: Advanced threat actors can deliberately poison open-source feeds with benign data to force the AI model into a high false-negative state.Future Scaling Goals: Next steps include expanding the infrastructure to support distributed processing using Apache Spark, integrating real-time memory analysis models, and implementing LLM-driven autonomous playbook generation to patch systems without human intervention.Appendix A - Evidence ChecklistCommand History: Exported terminal bash logs showing deployment of the Python data pipeline and Kafka consumer configurations.Screenshots: Graphical evidence of the functional data stream pipeline UI and real-time alert triggers.Evaluation File: A comprehensive .csv log containing the true labels, model predictions, prediction confidence levels, and confusion matrix inputs.STIX Bundle Excerpt: A validated JSON snippet conforming entirely to the STIX 2.1 schema specification for the tracked campaign.Graph Screenshot: Visual export from the Neo4j browser showing the active node clusters, threat actors, and infrastructure relationships.Report Samples: Complete markdown and formatted PDF exports of the production-ready executive and technical analyst write-ups.Code Changes Summary: Git diff log detailing customizations made to the core NLP extraction algorithms and XGBoost hyperparameter adjustments.
+# .github/threat-fusion-ai.yml
+metadata:
+  name: Threat-Fusion-AI
+  description: AI-Powered Threat Intelligence System
+  version: 1.0.0
+  framework: Advanced AI-Driven Cybersecurity Fellowship
+  environment: Linux practical project
+
+overview:
+  summary: >
+    An AI-Powered Threat Intelligence system is a next-generation cybersecurity framework 
+    that leverages Machine Learning (ML) and Artificial Intelligence (AI) to automate 
+    the collection, analysis, and prediction of cyber threats in real-time. This system 
+    transforms massive amounts of raw, unstructured data into actionable insights to stop 
+    cyberattacks before they penetrate the network.
+  executive_summary: >
+    This capstone project presents ThreatFusion AI, an advanced, production-ready AI-powered 
+    threat intelligence platform designed to automate the lifecycle of cyber threat data 
+    collection, enrichment, and analysis. Addressing the core problem of alert fatigue and 
+    unstructured threat data overload in modern Security Operations Centers (SOCs), this project 
+    implements an automated pipeline that extracts actionable intelligence from disparate sources.
+    The primary intelligence requirement was to identify, classify, and track advanced persistent 
+    threat (APT) campaigns targeting critical infrastructure. The highest-priority findings during 
+    evaluation revealed an active, multi-stage campaign leveraging newly uncovered zero-day 
+    vulnerabilities mapped to systemic living-off-the-land techniques. Operationally, ThreatFusion 
+    AI delivers immediate value by reducing the time-to-intelligence (TTI) from hours to milliseconds, 
+    enabling automated, proactive defensive posture adjustment and reducing false-positive rates by 42%.
+
+intelligence_requirements:
+  priority_intelligence_requirements:
+    - id: PIR-1
+      question: "What specific threat actors or nation-state groups are actively targeting financial and energy sector supply chains within the APAC region?"
+    - id: PIR-2
+      question: "What are the current Indicators of Compromise (IoCs) and Tactics, Techniques, and Procedures (TTPs) associated with recent ransomware-as-a-service (RaaS) exfiltration methods?"
+    - id: PIR-3
+      question: "Which internal assets or infrastructure vulnerabilities are most susceptible to the newly identified active campaigns?"
+  supported_decisions:
+    - "Triggering automated firewall and EDR blocklists based on high-confidence predictive threat scores."
+    - "Patch prioritization scheduling for infrastructure teams based on weaponized exploit intelligence."
+    - "Strategic reallocation of security budgets toward specific vector defense mechanisms (e.g., identity security vs. network segmentation)."
+  scope:
+    target_sectors:
+      - "Financial Institutions"
+      - "Critical Infrastructure (Energy/Grid)"
+      - "Managed Service Providers (MSPs)"
+    boundaries: >
+      Focuses exclusively on external threat feeds, open-source intelligence (OSINT), and dark web 
+      telemetry from the past 180 days. Internal honeypot logs are included; however, active 
+      offensive scanning or counter-reconnaissance is strictly out of scope.
+
+data_management:
+  traffic_light_protocol: Enabled
+  sources:
+    - source_name: "AlienVault OTX"
+      type: "Commercial OSINT"
+      reliability: "Reliable (B)"
+      credibility: "Competent (2)"
+      collection_method: "REST API"
+      tlp: "CLEAR"
+    - source_name: "MISP Community Feed"
+      type: "Shared Intel"
+      reliability: "Usually Reliable (C)"
+      credibility: "Possibly True (3)"
+      collection_method: "Automated Sync"
+      tlp: "GREEN"
+    - source_name: "DarkWeb Scraping"
+      type: "Proprietary Onion"
+      reliability: "Unreliable (E)"
+      credibility: "Doubtful (5)"
+      collection_method: "Python/Tor Scraper"
+      tlp: "AMBER"
+    - source_name: "Internal Honeypots"
+      type: "Internal Sensor"
+      reliability: "Highly Reliable (A)"
+      credibility: "Confirmed (1)"
+      collection_method: "Log Forwarder"
+      tlp: "RED"
+  controls:
+    sanitization:
+      - "All ingested URLs, domains, and IP addresses are automatically defanged (e.g., hxxp[://]malicious[.]com)."
+      - "File hashes (MD5/SHA256) are validated via regex before database insertion to prevent SQL/NoSQL injection via malicious threat names."
+      - "Malicious attachments or samples discovered via OSINT are never downloaded locally; only metadata and structural behaviors are stored."
+
+system_architecture:
+  pipeline_flow: "[Ingestion Module] ──> [Extraction & NLP] ──> [AI Scoring Engine] ──> [Graph Engine] ──> [Export/Sharing]"
+  modules:
+    ingestion: "A Python-based microservice utilizing Apache Kafka to ingest real-time JSON and XML streams from external threat feeds and internal Syslog servers."
+    extraction_nlp: "Uses regular expressions for standard IoC parsing and a fine-tuned Named Entity Recognition (NER) model to pull threat actors and malware names from unstructured markdown text."
+    ai_scoring_classification: "Evaluates incoming threat data using machine learning algorithms to calculate a dynamic Threat Confidence Score (0-100)."
+    graph_engine: "Maps entities into a graph database to establish clear relationships between infrastructure and known malicious actors."
+    export_reporting: "Automatically packages high-fidelity threat data into normalized STIX 2.1 bundles and generates PDF/Markdown summaries for human analysts."
+
+ai_model_design:
+  features:
+    - "Domain age"
+    - "Registrar country"
+    - "SSL certificate validity"
+    - "Structural text embeddings from threat reports"
+    - "Frequency of IP occurrence across multiple feeds"
+    - "Historical association with known malicious ASNs"
+  labels:
+    binary_classification:
+      0: "Benign / False Positive"
+      1: "Malicious"
+  models_used:
+    primary_ioc_scoring: "XGBoost Classifier (Selected for training speed and interpretability via SHAP values)"
+    text_processing: "Custom DistilBERT-NER"
+  dataset:
+    size: 500000
+    sources: ["CleanMX", "PhishTank", "Sanitized enterprise SOC historical logs"]
+    split_ratio:
+      train: 0.80
+      validation: 0.10
+      test: 0.10
+  alternatives_considered:
+    - model: "Random Forest"
+      status: "Discounted"
+      reason: "Larger memory footprint and slower inference times during peak streaming loads."
+    - model: "Full GPT-4 API Integration"
+      status: "Discounted"
+      reason: "High operational costs, latency constraints, and potential data privacy violations regarding TLP:RED data leaks to public LLM endpoints."
+
+evaluation_results:
+  metrics:
+    accuracy: 0.964
+    precision: 0.942
+    recall_sensitivity: 0.978
+    f1_score: 0.959
+  error_analysis:
+    false_positives: "Primarily occurred on newly registered Cloudflare/CDN domains used by legitimate startups."
+    false_negatives: "Occurred when threat actors used highly customized, low-frequency living-off-the-land (LotL) binaries that mimics administrative PowerShell commands."
+  improvement_plan: "Future iterations will incorporate temporal graph neural networks (GNNs) to analyze how an infrastructure's behavior changes over time, improving detection rates for dormant malicious domains."
+
+mitre_attack_mapping:
+  - indicator_behavior: "Enforced LSASS memory dump"
+    mapped_technique: "OS Credential Dumping"
+    technique_id: "T1003.001"
+    evidence_log: "procdump.exe -ma lsass.exe found in incident report text."
+    confidence_score: "High (95%)"
+  - indicator_behavior: "Base64 encoded web requests"
+    mapped_technique: "Obfuscated Files or Info"
+    technique_id: "T1027"
+    evidence_log: "Encoded payload observed in network traffic logs."
+    confidence_score: "Medium (78%)"
+  - indicator_behavior: "Automated task modification"
+    mapped_technique: "Scheduled Task/Job"
+    technique_id: "T1053.005"
+    evidence_log: "Registry modification event HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache."
+    confidence_score: "High (91%)"
+
+knowledge_graph:
+  database: "Neo4j Graph Database"
+  purpose: "Visualizes structural links between isolated indicators to identify broader malicious infrastructure clusters."
+  schema_relations: "(Threat Actor) -[USES]-> (Malware) -[COMMUNICATES_WITH]-> (C2 IP) -[RESOLVES_TO]-> (Domain)"
